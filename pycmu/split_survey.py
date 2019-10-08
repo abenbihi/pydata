@@ -8,8 +8,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 from pyquaternion import Quaternion
 
-import angle_tools
-import cst
+#import cst
 
 def get_img_order(slice_id, mode='database', save=False):
     """Display sequence of img for cam0 and cam1.
@@ -121,22 +120,22 @@ def get_survey_mano(slice_id, cam_id, mode='database'):
                 survey_count += 1
 
 
-def get_survey_auto(slice_id, mode='database'):
+def get_survey_auto(img_dir, slice_id, mode='database'):
     """Auto code to split queries into surveys based on camera poses."""
-    out_dir = 'meta/surveys/%d/'%slice_id
+    out_dir = 'pycmu/meta/surveys/%d/'%slice_id
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     
     # load ground-truth poses
     if mode == 'database':
         meta_v = np.loadtxt('%s/slice%d/ground-truth-database-images-slice%d.txt'
-                %(cst.EXT_IMG_DIR, slice_id, slice_id), dtype=str)
+                %(img_dir, slice_id, slice_id), dtype=str)
         fn_v = meta_v[:,0]
         pose_v = meta_v[:,1:]
         print('pose_v.shape: ', pose_v.shape)
     elif mode == 'query':
         # gather gt metas
-        meta_fn_l = glob.glob('%s/slice%d/camera-poses/*txt'%(cst.EXT_IMG_DIR, slice_id))
+        meta_fn_l = glob.glob('%s/slice%d/camera-poses/*txt'%(img_dir, slice_id))
         meta_l = []
         for meta_fn in meta_fn_l:
             #print(meta_fn)
@@ -235,17 +234,17 @@ def get_survey_auto(slice_id, mode='database'):
         exit(1)
 
 
-def show_survey(slice_id, cam_id, survey_id):
+def show_survey(img_dir, slice_id, cam_id, survey_id):
     print('\nslice_id: %d\tcam_id: %d\tsurvey_id: %d'%(slice_id, cam_id, survey_id))
    
     if survey_id == -1:
-        survey_m = np.loadtxt('meta/surveys/%d/c%d_db.txt'%(slice_id, cam_id), dtype=str)[:,0]
+        survey_m = np.loadtxt('pycmu/meta/surveys/%d/c%d_db.txt'%(slice_id, cam_id), dtype=str)[:,0]
     else:
-        survey_m = np.loadtxt('meta/surveys/%d/c%d_%d.txt'%(slice_id, cam_id, survey_id), dtype=str)[:,0]
+        survey_m = np.loadtxt('pycmu/meta/surveys/%d/c%d_%d.txt'%(slice_id, cam_id, survey_id), dtype=str)[:,0]
 
     data_count = 0
     for l in survey_m:
-        img_fn = '%s/%s'%(cst.EXT_IMG_DIR, l)
+        img_fn = '%s/%s'%(img_dir, l)
         print(img_fn)
         if not os.path.exists(img_fn):
             print("Error: %s : no such file or directory"%img_fn)
@@ -260,9 +259,10 @@ def show_survey(slice_id, cam_id, survey_id):
 
 if __name__=='__main__':    
     parser = argparse.ArgumentParser()
-    parser.add_argument('--slice_id', dtype=int, required=True)
-    parser.add_argument('--cam_id', dtype=int)
-    parser.add_argument('--survey_id', dtype=int)
+    parser.add_argument('--img_dir', type=str, required=True)
+    parser.add_argument('--slice_id', type=int, required=True)
+    parser.add_argument('--cam_id', type=int)
+    parser.add_argument('--survey_id', type=int)
     args = parser.parse_args()
 
     if args.survey_id == -1:
@@ -274,8 +274,8 @@ if __name__=='__main__':
         show_ordered_img(args.slice_id, mode)
 
     if (0==1): # split slice into surveys (auto)
-        get_survey_auto(args.slice_id, 'database')
-        get_survey_auto(args.slice_id, 'query')
+        get_survey_auto(args.img_dir, args.slice_id, 'database')
+        get_survey_auto(args.img_dir, args.slice_id, 'query')
  
     if (1==1): # show specific survey
-        show_survey(args.slice_id, args.cam_id, args.survey_id)
+        show_survey(args.img_dir, args.slice_id, args.cam_id, args.survey_id)
