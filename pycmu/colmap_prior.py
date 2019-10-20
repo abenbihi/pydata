@@ -12,7 +12,7 @@ from pyquaternion import Quaternion
 import tools.angles
 import tools.read_model
 
-def pose2colmap(slice_id, cam_id, survey_id, colmap_ws):
+def pose2colmap(args):
     """Writes img poses from the CMU-Seasons dataset to colmap format. 
     
         Use the same camera convention but expects the img pose with the 
@@ -22,50 +22,51 @@ def pose2colmap(slice_id, cam_id, survey_id, colmap_ws):
         Useful for when you want to run colmap on CMU-Seasons and use the known
         poses.
     """
-    # load survey to convert
-    if survey_id == -1:
-        survey_m = np.loadtxt('pycmu/meta/surveys/%d/c%d_db.txt'%(slice_id, cam_id), dtype=str)
+    if args.survey_id == -1:
+        survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%(
+            args.slice_id, args.slice_id, args.cam_id)
     else:
-        survey_m = np.loadtxt('pycmu/meta/surveys/%d/c%d_%d.txt'%(slice_id, cam_id, survey_id), dtype=str)
-
-    # output dir
-    if survey_id == -1:
-        mano_sparse_dir = 'pycmu/meta/colmap/%d/c%d_db/'%(slice_id, cam_id)
-    else:
-        mano_sparse_dir = 'pycmu/meta/colmap/%d/c%d_%d/'%(slice_id, cam_id, survey_id)
-    print("mano_sparse_dir: %s"%mano_sparse_dir)
-    if not os.path.exists(mano_sparse_dir):
-        os.makedirs(mano_sparse_dir)
+        survey_dir = "pycmu/meta/surveys/%d/%d_c%d_%d/"%(
+            args.slice_id, args.slice_id, args.cam_id, args.survey_id)
+    survey_m = np.loadtxt("%s/pose.txt"%survey_dir, dtype=str)
+    
+    colmap_dir = "%s/colmap_prior"%survey_dir # output dir
+    print("colmap_dir: %s"%colmap_dir)
+    if not os.path.exists(colmap_dir):
+        os.makedirs(colmap_dir)
     
     # output: empty 3D points
-    colmap_f = open('%s/points3D.txt'%mano_sparse_dir, 'w')
+    colmap_f = open('%s/points3D.txt'%colmap_dir, 'w')
     colmap_f.close()
     
     # output: camera params (intrinsics)
     camera_id = 1 # camera count i.e. it is not the same id as c0 or c1
-    cam_f = open('%s/cameras.txt'%mano_sparse_dir, 'w')
-    if cam_id==0:
-        #cam_f.write('1 OPENCV 1024 768 868.993378 866.063001 525.942323 420.042529 -0.399431 0.188924 0.000153 0.000571\n')
-        cam_f.write("%d PINHOLE 1024 768 868.99 866.06 525.94 420.04\n"%camera_id)
-        #print("%d PINHOLE 1024 768 868.99,866.06,525.94,420.04\n"%data_count)
-    else:
-        cam_f.write("%d PINHOLE 1024 768 873.38 876.49 529.32 397.27\n"%camera_id)
-    cam_f.close()
+    cam_f = open('%s/cameras.txt'%colmap_dir, 'w')
+    
+    #if cam_id==0:
+    #    cam_f.write('%d OPENCV 1024 768 868.993378 866.063001 525.942323 420.042529 -0.399431 0.188924 0.000153 0.000571\n'%camera_id)
+    #    #cam_f.write("%d PINHOLE 1024 768 868.99 866.06 525.94 420.04\n"%camera_id)
+    #    #print("%d PINHOLE 1024 768 868.99,866.06,525.94,420.04\n"%data_count)
+    #else:
+    #    #cam_f.write("%d PINHOLE 1024 768 873.38 876.49 529.32 397.27\n"%camera_id)
+    #    cam_f.write("%d OPENCV 1024 768 873.382641 876.489513 529.324138 397.272397 -0.397066 0.181925 0.000176 -0.000579\n"%camera_id)
+    #cam_f.close()
     
     # output: camera extrinsincs i.e. image params
-    colmap_f = open('%s/images.txt'%mano_sparse_dir, 'w')
+    colmap_f = open('%s/images.txt'%colmap_dir, 'w')
 
     # output: image list to use 
-    img_l_f = open('%s/image_list.txt'%mano_sparse_dir, 'w')
+    img_l_f = open('%s/image_list.txt'%colmap_dir, 'w')
   
     data_count = 0
     for l in survey_m:
         img_fn = l[0]
         img_id = int(img_fn.split("_")[1])
-        #qw, qx, qy, qz, tx, ty, tz = [float(ll) for ll in l[1:]]
         qw, qx, qy, qz, cx, cy, cz = [float(ll) for ll in l[1:]]
+        #if (qw==-1):
+        #    continue
 
-        R = tools.angles.quat2mat([qw, qx, qy, qz]) # world -> camera 
+        R = tools.angles.quat2mat([qw, qx, qy, qz]) # cam -> world
         c = np.array([cx, cy, cz]) # cam center
         T = np.eye(4)
         T[:3,:3] = R
@@ -76,9 +77,19 @@ def pose2colmap(slice_id, cam_id, survey_id, colmap_ws):
 
         data_count += 1
         colmap_f.write('%d %.8f %.8f %.8f %.8f %.8f %.8f %.8f %d %s\n\n' 
-            %(data_count, qw, qx, qy, qz, tx, ty, tz, 1, img_fn))
+            %(data_count, qw, qx, qy, qz, tx, ty, tz, camera_id, img_fn))
         img_l_f.write('%s\n' %(img_fn) )
+        
+        if args.cam_id==0:
+            cam_f.write('%d OPENCV 1024 768 868.993378 866.063001 525.942323 420.042529 -0.399431 0.188924 0.000153 0.000571\n'%camera_id)
+            #cam_f.write("%d PINHOLE 1024 768 868.99 866.06 525.94 420.04\n"%camera_id)
+            #print("%d PINHOLE 1024 768 868.99,866.06,525.94,420.04\n"%data_count)
+        else:
+            cam_f.write("%d OPENCV 1024 768 873.382641 876.489513 529.324138 397.272397 -0.397066 0.181925 0.000176 -0.000579\n"%camera_id)
+            #cam_f.write("%d PINHOLE 1024 768 873.38 876.49 529.32 397.27\n"%camera_id)
+        camera_id += 1
 
+    cam_f.close()
     colmap_f.close()
     img_l_f.close()
 
@@ -87,10 +98,10 @@ def pose2colmap(slice_id, cam_id, survey_id, colmap_ws):
     # By default colmap does exhaustive matching but if you already know that
     # some images do not overlap, it will save time to specify the matches.
     overlap = 10 # number of consecutive img that overlap, you may adjust it
-    match_fn = '%s/match_list.txt'%mano_sparse_dir
+    match_fn = '%s/image_pairs_to_match_intra.txt'%colmap_dir
     match_l_f = open(match_fn, 'w')
     img_fn_l = [l.split("\n")[0].split(" ")[-1] for l in
-            open('%s/images.txt'%mano_sparse_dir).readlines() if l!='\n']
+            open('%s/images.txt'%colmap_dir).readlines() if l!='\n']
     img_num = len(img_fn_l)
     
     for i, img_fn in enumerate(img_fn_l):
@@ -100,6 +111,7 @@ def pose2colmap(slice_id, cam_id, survey_id, colmap_ws):
         for j in range(start, end):
             match_l_f.write('%s %s\n'%(img_fn_l[i], img_fn_l[j]))
     match_l_f.close()
+
 
 
 def read_depth_colmap(slice_id, cam_id, survey_id, colmap_ws, mode,
@@ -360,10 +372,15 @@ if __name__=="__main__":
     parser.add_argument("--cam_id", type=int, required=True)
     parser.add_argument("--survey_id", type=int, required=True)
     parser.add_argument("--colmap_ws", type=str, required=True)
+    parser.add_argument("--img_dir", type=str, required=True)
     args = parser.parse_args()
     
     # generate colmap ws to run colmap from known poses
-    #pose2colmap(args.slice_id, args.cam_id, args.survey_id, args.colmap_ws)
+    pose2colmap(args)
+    
+    #gen_match_manual(args)
+    #gen_match_inter(args)
+    #test_match_inter(args)
 
     # convert colmap-format (bin) depth/normal maps to img/txt format
     
@@ -371,9 +388,9 @@ if __name__=="__main__":
     #read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
     #        args.colmap_ws, "depth", save_visu=True, display=False)
 
-    # save colmap depth to png file with uint16 precision
-    read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
-            args.colmap_ws, "depth", save_type=np.uint16, save_fmt="png")
+    ## save colmap depth to png file with uint16 precision
+    #read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
+    #        args.colmap_ws, "depth", save_type=np.uint16, save_fmt="png")
     
     ## computes the error introduced by the bin->png/txt conversion
     #test_depth_precision(args.slice_id, args.cam_id, args.survey_id, args.colmap_ws, "depth")
