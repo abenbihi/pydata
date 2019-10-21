@@ -8,6 +8,7 @@ import tools.read_model
 
 
 def gen_match_manual(args):
+    """Manually choose db img matching the q img."""
     survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%( args.slice_id,
             args.slice_id, args.cam_id)
     db_fn_v = np.loadtxt("%s/fn.txt"%survey_dir, dtype=str)
@@ -59,11 +60,93 @@ def gen_match_manual(args):
                 db_idx_prev = db_idx + 1
                 continue
 
-    out_fn = "%s/image_pairs_manual.txt"%survey_dir 
+    out_fn = "%s/image_pairs_manual_1to1.txt"%survey_dir 
+    np.savetxt(out_fn, np.array(match_inter_l), fmt="%s")
+
+
+def gen_match_auto(args):
+    """Semi-auto method to choose db matching the q img using ground-truth pose
+    when available."""
+    survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%( args.slice_id,
+            args.slice_id, args.cam_id)
+
+    db_pose_v = np.loadtxt("%s/pose.txt"%survey_dir, dtype=str)
+    db_fn_v = db_pose_v[:,0]
+    db_pose_v = db_pose_v[:,1:].astype(np.float32)
+    db_c = db_pose_v[:,4:]
+    db_num = db_fn_v.shape[0]
+
+    survey_dir = "pycmu/meta/surveys/%d/%d_c%d_%d/"%( args.slice_id,
+            args.slice_id, args.cam_id, args.survey_id)
+    q_fn_v = np.loadtxt("%s/fn.txt"%survey_dir, dtype=str)
+    q_pose_v = np.loadtxt("%s/pose.txt"%survey_dir, dtype=str)
+    q_fn_v = q_pose_v[:,0]
+    q_pose_v = q_pose_v[:,1:].astype(np.float32)
+    q_c = q_pose_v[:,4:]
+    q_num = q_fn_v.shape[0]
+
+    q_ok = (q_pose_v[:,0].astype(np.int) != -1).astype(np.int32)
+
+    d = np.linalg.norm(np.expand_dims(q_c, 1) - np.expand_dims(db_c, 0),
+            ord=None, axis=2)
+    order = np.argsort(d, axis=1)
+    match = order[:,0]
+
+    # keep auto match for the img with gt pose, else switch to manual mode
+    match_inter_l = []
+    db_idx_prev = 0
+    for q_idx, q_fn in enumerate(q_fn_v):
+        if q_ok[q_idx] == 1: # yes, we have gt pose
+            db_idx = match[q_idx]
+            match_inter_l.append("%d %d"%(q_idx, db_idx))
+            db_idx_prev = db_idx + 1
+            continue
+        
+        # here, we don't have gt pose, switch to manual match
+        q_img = cv2.imread("%s/%s"%(args.img_dir, q_fn))
+        q_img = cv2.resize(q_img, None, fx=0.5, fy=0.5,
+                interpolation=cv2.INTER_AREA)
+        next_img = False
+        
+        db_idx = db_idx_prev
+        while True:
+            if db_idx == (db_num - 1):
+                print("You're at the end of the db survey.")
+            if next_img == True:
+                break
+            db_fn = db_fn_v[db_idx]
+
+            db_img = cv2.imread("%s/%s"%(args.img_dir, db_fn))
+            db_img = cv2.resize(db_img, None, fx=0.5, fy=0.5,
+                    interpolation=cv2.INTER_AREA)
+            cv2.imshow("img", np.hstack((q_img, db_img)))
+            k = (cv2.waitKey(0) & 0xFF)
+
+            if k==ord("q"): # stop
+                exit(0)
+            elif k==ord("n"): # next img
+                db_idx += 1
+                continue
+            elif k==ord("p"): # previous img
+                if db_idx >0:
+                    db_idx -= 1
+                else:
+                    print("Already first img. Go to next one")
+                continue
+            elif k==ord("k"): # previous img
+                match_inter_l.append("%d %d"%(q_idx, db_idx))
+                next_img = True
+                db_idx_prev = db_idx + 1
+                continue
+    
+    out_fn = "%s/image_pairs_manual_1to1.txt"%survey_dir 
+    print(out_fn)
     np.savetxt(out_fn, np.array(match_inter_l), fmt="%s")
 
 
 def gen_match_inter(args):
+    """Generates the list of img pairs to match in colmap given the db-q
+    1-to-1 matches."""
     survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%( args.slice_id,
             args.slice_id, args.cam_id)
     db_fn_v = np.loadtxt("%s/fn.txt"%survey_dir, dtype=str)
@@ -73,7 +156,7 @@ def gen_match_inter(args):
             args.slice_id, args.cam_id, args.survey_id)
     q_fn_v = np.loadtxt("%s/fn.txt"%survey_dir, dtype=str)
 
-    pairs_fn = "%s/image_pairs_manual.txt"%survey_dir 
+    pairs_fn = "%s/image_pairs_manual_1to1.txt"%survey_dir 
     pairs = np.loadtxt(pairs_fn, dtype=np.int)
 
     match_inter_l = []
@@ -127,7 +210,7 @@ if __name__=="__main__":
     args = parser.parse_args()
     
     #gen_match_manual(args)
-    #gen_match_inter(args)
+    gen_match_inter(args)
     test_match_inter(args)
 
 

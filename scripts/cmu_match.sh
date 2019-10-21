@@ -3,7 +3,7 @@
 . ./scripts/export_path.sh
 
 #for slice_id in 22 23 24 25
-for slice_id in 6
+for slice_id in 24
 do
   for cam_id in 0 #1
   do
