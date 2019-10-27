@@ -93,24 +93,24 @@ def pose2colmap(args):
     colmap_f.close()
     img_l_f.close()
 
-    # manual matches
-    # It specifies which image to match during the feature matching step.
-    # By default colmap does exhaustive matching but if you already know that
-    # some images do not overlap, it will save time to specify the matches.
-    overlap = 10 # number of consecutive img that overlap, you may adjust it
-    match_fn = '%s/image_pairs_to_match_intra.txt'%colmap_dir
-    match_l_f = open(match_fn, 'w')
-    img_fn_l = [l.split("\n")[0].split(" ")[-1] for l in
-            open('%s/images.txt'%colmap_dir).readlines() if l!='\n']
-    img_num = len(img_fn_l)
-    
-    for i, img_fn in enumerate(img_fn_l):
-        ref_img_fn = img_fn_l[i]
-        start = min(i+1, img_num - 1)
-        end = min(i+1+overlap, img_num-1)
-        for j in range(start, end):
-            match_l_f.write('%s %s\n'%(img_fn_l[i], img_fn_l[j]))
-    match_l_f.close()
+    ## manual matches
+    ## It specifies which image to match during the feature matching step.
+    ## By default colmap does exhaustive matching but if you already know that
+    ## some images do not overlap, it will save time to specify the matches.
+    #overlap = 10 # number of consecutive img that overlap, you may adjust it
+    #match_fn = '%s/image_pairs_to_match_intra.txt'%colmap_dir
+    #match_l_f = open(match_fn, 'w')
+    #img_fn_l = [l.split("\n")[0].split(" ")[-1] for l in
+    #        open('%s/images.txt'%colmap_dir).readlines() if l!='\n']
+    #img_num = len(img_fn_l)
+    #
+    #for i, img_fn in enumerate(img_fn_l):
+    #    ref_img_fn = img_fn_l[i]
+    #    start = min(i+1, img_num - 1)
+    #    end = min(i+1+overlap, img_num-1)
+    #    for j in range(start, end):
+    #        match_l_f.write('%s %s\n'%(img_fn_l[i], img_fn_l[j]))
+    #match_l_f.close()
 
 
 

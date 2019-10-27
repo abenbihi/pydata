@@ -4,11 +4,11 @@
 
 #for slice_id in 22 23 24 25
 if [ 1 -eq 1 ]; then
-  for slice_id in 18 19 20 21 22 23 24 25
+  for slice_id in 22 #18 19 20 21 22 23 24 25
   do
-    for cam_id in 0 1
+    for cam_id in 0
     do
-      for survey_id in -1 #0 1 2 3 4 5 6 7 8 9
+      for survey_id in 0 #0 1 2 3 4 5 6 7 8 9
       do
         if [ "$slice_id" -eq 24 ] || [ "$slice_id" -eq 25 ]; then
           if [ "$cam_id" -eq 1 ] && [ "$survey_id" -eq 8 ]; then

@@ -25,7 +25,6 @@ known poses when generating the sparse reconstruction.
 
 ### NetVLAD
 
-
 ```bash
 ./scripts/cmu_split_surveys.sh
 ./scripts/cmu_get_pose.sh

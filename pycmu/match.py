@@ -144,7 +144,7 @@ def gen_match_auto(args):
     np.savetxt(out_fn, np.array(match_inter_l), fmt="%s")
 
 
-def gen_match_inter(args):
+def gen_match_inter(args, overlap=5):
     """Generates the list of img pairs to match in colmap given the db-q
     1-to-1 matches."""
     survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%( args.slice_id,
@@ -163,11 +163,11 @@ def gen_match_inter(args):
     for pair in pairs:
         q_idx, db_idx = pair
         q_fn = q_fn_v[q_idx]
-        for idx in range(max(0, db_idx-5), min(db_num, db_idx+5)):
+        for idx in range(max(0, db_idx-overlap), min(db_num, db_idx+overlap)):
             db_fn = db_fn_v[idx]
             match_inter_l.append("%s %s"%(q_fn, db_fn))
     
-    out_fn = "%s/image_pairs_to_match_inter.txt"%survey_dir 
+    out_fn = "%s/image_pairs_to_match_inter_%d.txt"%(survey_dir, overlap)
     np.savetxt(out_fn, np.array(match_inter_l), fmt="%s")
 
 
@@ -200,6 +200,29 @@ def test_match_inter(args):
             exit(0)
 
 
+def gen_match_intra_auto(args):
+    survey_dir = "pycmu/meta/surveys/%d/%d_c%d_db/"%( args.slice_id,
+            args.slice_id, args.cam_id)
+    db_fn_v = np.loadtxt("%s/fn.txt"%survey_dir, dtype=str)
+    db_num = db_fn_v.shape[0]
+
+    overlap = 4 # number of consecutive img that overlap, you may adjust it
+    colmap_dir = "%s/colmap_prior"%survey_dir # output dir
+    match_fn = '%s/image_pairs_to_match_intra_mano.txt'%colmap_dir
+    match_l_f = open(match_fn, 'w')
+    #img_fn_l = [l.split("\n")[0].split(" ")[-1] for l in
+    #        open('%s/images.txt'%colmap_dir).readlines() if l!='\n']
+    #img_num = len(img_fn_l)
+    
+    for i, img_fn in enumerate(db_fn_v):
+        ref_img_fn = db_fn_v[i]
+        start = min(i+1, db_num - 1)
+        end = min(i+1+overlap, db_num-1)
+        for j in range(start, end):
+            match_l_f.write('%s %s\n'%(db_fn_v[i], db_fn_v[j]))
+    match_l_f.close()
+
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--slice_id", type=int, required=True)
@@ -209,9 +232,19 @@ if __name__=="__main__":
     parser.add_argument("--img_dir", type=str, required=True)
     args = parser.parse_args()
     
-    #gen_match_manual(args)
+    ## write img match across surveys
+    ## 1. collect img idx of matching imgs across surveys
+    ##gen_match_manual(args)
+    gen_match_auto(args)
+
+    ## 2. write file of pairs of image names to match across surveys
     gen_match_inter(args)
-    test_match_inter(args)
+
+    ## 3. Test your match
+    #test_match_inter(args)
+
+    # write img match intra survey according to me and not colmap
+    #gen_match_intra_auto(args)
 
 
 #def gen_match_inter(args):
