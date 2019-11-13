@@ -37,6 +37,12 @@ def get_gt_pose(args):
     if len(all_pose_l) == 0:
         print("There is no gt pose available for survey %d_c%d_%d"%(
             args.slice_id, args.cam_id, args.survey_id))
+        fn_v = np.loadtxt("%s/fn.txt"%out_dir, dtype=str)
+        fn_v = fn_v.reshape(fn_v.shape[0], 1)
+        mock_pose = np.array(["-1.0 -1.0 -1.0 -1.0 -1.0 -1.0 1.0"]).reshape(1,1)
+        mock_pose = np.tile(mock_pose, (fn_v.shape[0],1))
+        mock_pose = np.hstack((fn_v, mock_pose))
+        np.savetxt("%s/pose.txt"%out_dir, mock_pose, fmt="%s")
         return(0)
     
     pose_v = np.vstack(all_pose_l)

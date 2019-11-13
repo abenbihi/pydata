@@ -2,10 +2,14 @@
 
 . ./scripts/export_path.sh
 
-if [ 0 -eq 1 ]; then
-  for slice_id in 18 19 20 22 23 24 25
+if [ 1 -eq 1 ]; then
+  for slice_id in 18 19 20 #22 23 24 25
   #for slice_id in 24
   do
+    if [ "$slice_id" -eq 21 ]; then
+      echo "Abort: slice 21 need to be done manually because it is f***** up"
+      exit 1
+    fi
     for cam_id in 0 1 
     do
       echo "slice_id: "$slice_id"\tcam_id: "$cam_id""
@@ -27,7 +31,7 @@ if [ 0 -eq 1 ]; then
   done
 fi
 
-if [ 1 -eq 1 ]; then
+if [ 0 -eq 1 ]; then
   for slice_id in 21
   do
     for cam_id in 0 1 

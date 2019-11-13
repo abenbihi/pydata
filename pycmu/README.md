@@ -12,7 +12,7 @@ Set the constant `EXT_IMG_DIR` in `cst.py`
 
 
 Run the function `get_survey_auto`.
-    python -m splut_survey --slice_id 24
+    python -m split_survey --slice_id 24
 
 
 ### COLMAP
