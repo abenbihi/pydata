@@ -114,30 +114,41 @@ def pose2colmap(args):
 
 
 
-def read_depth_colmap(slice_id, cam_id, survey_id, colmap_ws, mode,
+def read_depth_colmap(slice_id, cam_id, survey_id, mode,
         save_type=np.float32, save_fmt="txt", save_visu=False, display=False):
     """Converts colmap-format bin depth/normal maps to img/txt format.
-
+    
     Args:
         mode: {depth, normal}
     """
-    if survey_id == -1:
-        ws_dir = "%s/%d_%d_db/"%(colmap_ws, slice_id, cam_id)
+    if args.survey_id == -1:
+        ws_dir = "pycmu/res/colmap/%d/%d_c%d_db/"%(
+            args.slice_id, args.slice_id, args.cam_id)
+        out_depth_dir = '%s/dense/stereo/depth/slice%d/database/'%(ws_dir, slice_id)
+        out_img_dir = '%s/dense/stereo/depth_img/slice%d/database'%(ws_dir, slice_id)
     else:
-        ws_dir = "%s/%d_%d_%d/"%(colmap_ws, slice_id, cam_id, 
-                survey_id)
-    img_fn_v = np.loadtxt('%s//mano/image_list.txt'%ws_dir, dtype=str)
+        ws_dir = "pycmu/res/colmap/%d/%d_c%d_%d/"%(
+            args.slice_id, args.slice_id, args.cam_id, args.survey_id)
+        out_depth_dir = '%s/dense/stereo/depth/slice%d/query/'%(ws_dir, slice_id)
+        out_img_dir = '%s/dense/stereo/depth_img/slice%d/query/'%(ws_dir, slice_id)
+
+    # input dirs
+    img_fn_v = np.loadtxt('%s/colmap_prior/image_list.txt'%ws_dir, dtype=str)
     depth_dir = '%s/dense/stereo/depth_maps/'%ws_dir
     
-    out_depth_dir = '%s/dense/stereo/depth_txt/'%ws_dir
+    # create output dirs
     if not os.path.exists(out_depth_dir):
         os.makedirs(out_depth_dir)
-    
+    if save_visu:
+        if not os.path.exists(out_img_dir):
+            os.makedirs(out_img_dir)
+
+   
     min_l = [] # list of min depth of depth map
     max_l = [] # list of max depth of depth map
     fn_l = []
     for i, img_root_fn in enumerate(img_fn_v):
-        if i%20==0:
+        if i%10==0:
             print("%d/%d"%(i, img_fn_v.shape[0]))
         root_fn = img_root_fn.split("/")[-1].split(".")[0]
         fn_l.append(root_fn)
@@ -165,17 +176,22 @@ def read_depth_colmap(slice_id, cam_id, survey_id, colmap_ws, mode,
             plt.figure()
             plt.imshow(depth_map)
             plt.colorbar()
-            plt_fn = "%s/%s.png"%(out_depth_dir, root_fn)
-            print(plt_fn)
+            plt_fn = "%s/%s.png"%(out_img_dir, root_fn)
+            #print(plt_fn)
             plt.title('%s'%root_fn)
-            plt.savefig(plt_fn)
+            plt.axis("off")
+            plt.savefig(plt_fn, bbox_inches="tight")
             plt.close()
+
+            #img = cv2.imread(plt_fn)
+            #cv2.imshow("img", img)
+            #cv2.waitKey(0)
         
         root_fn = img_root_fn.split("/")[-1].split(".")[0]
         if save_type == np.float32:
             # save depth map in txt file with float32 precision
             out_fn = "%s/%s.txt"%(out_depth_dir, root_fn)
-            print(out_fn)
+            #print(out_fn)
             np.savetxt(out_fn, depth_map)
         else:
             # remap
@@ -185,6 +201,7 @@ def read_depth_colmap(slice_id, cam_id, survey_id, colmap_ws, mode,
                     old_max - old_min)
             depth_map_u = depth_map_u.astype(save_type)
             out_fn = "%s/%s.%s"%(out_depth_dir, root_fn, save_fmt)
+            #print(out_fn)
             if save_fmt == "txt":
                 np.savetxt(out_fn, depth_map_u, fmt="%d")
             elif save_fmt == "png":
@@ -197,10 +214,15 @@ def read_depth_colmap(slice_id, cam_id, survey_id, colmap_ws, mode,
             k = cv2.waitKey(0) & 0xFF
             if k == ord("q"):
                 exit(0)
-        
-    np.savetxt("%s/min.txt"%out_depth_dir, np.array(min_l), fmt="%.8f")
-    np.savetxt("%s/max.txt"%out_depth_dir, np.array(max_l), fmt="%.8f")
-    np.savetxt("%s/fn.txt"%out_depth_dir, np.array(fn_l), fmt="%s")
+        #exit(0)
+ 
+    #print("min depth over survey: %.4f"%np.min(np.array(min_l)))
+    #print("max depth over survey: %.4f"%np.max(np.array(max_l)))
+       
+    #np.savetxt("%s/min.txt"%out_depth_dir, np.array(min_l), fmt="%.8f")
+    #np.savetxt("%s/max.txt"%out_depth_dir, np.array(max_l), fmt="%.8f")
+    #np.savetxt("%s/fn.txt"%out_depth_dir, np.array(fn_l), fmt="%s")
+
 
 def test_depth_precision(slice_id, cam_id, survey_id, colmap_ws, mode):
     """Computes the RMSE introduced in the depth map when saving with uint16
@@ -371,26 +393,23 @@ if __name__=="__main__":
     parser.add_argument("--slice_id", type=int, required=True)
     parser.add_argument("--cam_id", type=int, required=True)
     parser.add_argument("--survey_id", type=int, required=True)
-    parser.add_argument("--colmap_ws", type=str, required=True)
+    #parser.add_argument("--colmap_ws", type=str, required=True)
     parser.add_argument("--img_dir", type=str, required=True)
     args = parser.parse_args()
     
-    # generate colmap ws to run colmap from known poses
-    pose2colmap(args)
+    ## generate colmap prior ws to run colmap from known poses
+    #pose2colmap(args)
     
-    #gen_match_manual(args)
-    #gen_match_inter(args)
-    #test_match_inter(args)
-
     # convert colmap-format (bin) depth/normal maps to img/txt format
     
     ## save colmap depth to txt file with float32 precision
     #read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
     #        args.colmap_ws, "depth", save_visu=True, display=False)
 
-    ## save colmap depth to png file with uint16 precision
-    #read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
-    #        args.colmap_ws, "depth", save_type=np.uint16, save_fmt="png")
+    # save colmap depth to png file with uint16 precision
+    read_depth_colmap(args.slice_id, args.cam_id, args.survey_id,
+            "depth", save_type=np.uint16, save_fmt="png", save_visu=True,
+            display=False)
     
     ## computes the error introduced by the bin->png/txt conversion
     #test_depth_precision(args.slice_id, args.cam_id, args.survey_id, args.colmap_ws, "depth")
